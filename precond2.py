@@ -13,6 +13,9 @@ The input file MUST be an omniweb data file obtained via
 https://omniweb.gsfc.nasa.gov/form/dx1.html.
 
 This version is more modular and leverages more "pythonic" language features.
+HOWEVER, it still has big problems to sort out!  Hard-coded assumptions about
+files, limited testing over a suite of date/times, etc.  
+This should be considered prototype 2.
 
 DTW, 2020, GEM Student Tutorial
 '''
@@ -95,13 +98,13 @@ def load_omni(filename):
         # We have Year, DOY, and Hour in the file.  We'll turn that into
         # a date time by creating a datetime of the year and adding the
         # days and hours to that.
-        data['time'] = dt.datetime(int(parts[0]), 1, 1, 0, 0) + \
-                       dt.timedelta(days=int(parts[1]), hours=int(parts[2]))
+        data['time'][i] = dt.datetime(int(parts[0]), 1, 1, 0, 0) + \
+                          dt.timedelta(days=int(parts[1])-1, hours=int(parts[2]))
 
         # The rest of the values can just be stuffed into the right spot in
         # the dictionary!
         for j, v in enumerate(varnames):
-            data[v][i] = parts[j+2]
+            data[v][i] = parts[j+3]
 
     # Return the dictionary to the caller:
     return data
@@ -154,9 +157,9 @@ def get_precond(filename, epoch, span=24, debug=False):
     ========
     >>> import datetime as dt
     >>> epoch = dt.datetime(2000,7,15,13,0,0)
-    >>> means = get_precond(filename, epoch)
+    >>> means = get_precond('data/omni_test.lst', epoch)
     >>> print(means)
-
+    {'b': 12.5, 'bx': 1.5, 'by': 1.0, 'bz': 0.5, 'dens': 0.5, 'v': 12.5, 'pdyn': 610.0, 'dst': 9.3, 'clock': 22.5}
     '''
 
     # Open file, load data:
@@ -170,8 +173,8 @@ def get_precond(filename, epoch, span=24, debug=False):
     # do this very easily!  "mask" will be an array of
     # booleans that has the same time and shape as data['time'].
     # However, it will only be `True` when the conditions pass:
-    mask = (data['time']>=epoch-dt.timedelta(days=1))&(data['time']<=epoch)
-
+    mask = (data['time']>=epoch-dt.timedelta(hours=span))&(data['time']<=epoch)
+    
     # Create a container of output:
     means = {}
     
@@ -207,4 +210,23 @@ if __name__ == '__main__':
     # Our file to read/open:
     filename = 'data/omni_july2000.lst'
 
-    data1 = load_omni(filename)
+    # Get our means:
+    means = get_precond('data/omni_test.lst', t, debug=True)
+    
+    # Here's what our answer SHOULD be based on
+    # hand calculated values:
+    expected = {'b': 3.5,
+                'bx': 1.0,
+                'by': 0.25,
+                'bz': 0.0,
+                'dens': 12.5,
+                'v': 610.0,
+                'pdyn': 9.3,
+                'dst': -57.0,
+                'clock': 33.75}
+
+    # Test by making sure we match all of these!
+    for v in expected.keys():
+        print(f'Testing {v}...')
+        if expected[v] != means[v]:
+            print(f'\tERROR: Wrong answer for {v}: {expected[v]} vs. {means[v]}')
