@@ -51,7 +51,7 @@ doy, hour  = 197, 13  # Note the multiple assignment here.
 epoch = doy + hour/24 # Time format described below
 
 # Our file to read/open:
-filename = 'data/omni_test.lst'#omni_july2000.lst'
+filename = 'data/omni_july2000.lst'
 
 ##### Read/Parse data:
 # We'll open and "slurp" data into a list.
@@ -64,7 +64,7 @@ f.close()               # Close our file.
 # Get the size of the data- how many variables, how many records?
 #### ERROR 1 IS HERE: Should read "lines[0].split()"
 nVar = len(lines[0].split()) # Number of variables = number of columns.
-                          # "Split" splits a line into substrings by whitespace.
+                             # "Split" splits a line into substrings by whitespace.
 nRec = len(lines) # No header to the data, this is the number of records
                   # (with one record per line).
 
@@ -91,7 +91,7 @@ time = data[:,1] + data[:,2]/24.
 # Angle = 270     : IMF By negative
 # Most scientific/engineering languages will have two arctangent functions
 # with "arctan2" better handling the angle quadrant.
-clock = (180.0/np.pi)*np.arctan2(data[:,5], data[:,6])
+clock = (180.0/np.pi)*np.arctan2(data[:,5], data[6])
 
 # Finally, we extract values between epoch minus 24 hours through epoch.
 # Here, we do this is a very clunky way and will improve upon it in
@@ -100,9 +100,9 @@ clock = (180.0/np.pi)*np.arctan2(data[:,5], data[:,6])
 iStart, iStop = -1, -1  # Initial values of our indices.
 for i, tnow in enumerate(time):  # Python loops are cool.
     # If the current time surpasses epoch-1 for the first time, get index.
-    if tnow >= epoch-1.0 and iStart==-1: iStart=i
+    if tnow > epoch-1.0 and iStart==-1: iStart=i
     # If we pass epoch, save index and break.
-    if tnow > epoch:
+    if tnow >= epoch:
         iStop = i
         break
 

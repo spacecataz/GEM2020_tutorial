@@ -99,7 +99,7 @@ def load_omni(filename):
         # a date time by creating a datetime of the year and adding the
         # days and hours to that.
         data['time'][i] = dt.datetime(int(parts[0]), 1, 1, 0, 0) + \
-                          dt.timedelta(days=int(parts[1])-1, hours=int(parts[2]))
+                          dt.timedelta(days=int(parts[1]), hours=int(parts[2]))
 
         # The rest of the values can just be stuffed into the right spot in
         # the dictionary!
