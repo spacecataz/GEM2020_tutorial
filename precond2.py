@@ -69,7 +69,7 @@ def load_omni(filename):
     
     # Open file and slurp in contents using "with" statement.
     with open(filename,'r') as f:
-        lines = f.slurp
+        lines = f.readlines()
 
     # Get number of records in the file:
     nRec = len(lines)
@@ -104,7 +104,7 @@ def load_omni(filename):
             data[v][i] = parts[j+2]
 
     # Return the dictionary to the caller:
-    return dict
+    return data
         
 def calc_clock(data):
     '''
@@ -134,46 +134,67 @@ def calc_clock(data):
     # See precond1.py for details on this calculation.
     data['clock'] = (180.0/np.pi)*np.arctan2(data['bz'], data['by'])
 
-def get_precond(filename, epoch, span=24):
+def get_precond(filename, epoch, span=24, debug=False):
     '''
     For a OMNIweb hourly data file and epoch of a geomagnetic storm start,
     find the mean solar wind characteristics for the time leading up to it.
+    Parameters
+    ==========
+    data : dict
+       Dictionary of solar wind values as given by the load_omni function.
+
+    Other Parameters
+    ================
+
+    Returns
+    =======
+    None
+
+    Examples
+    ========
+    >>> import datetime as dt
+    >>> epoch = dt.datetime(2000,7,15,13,0,0)
+    >>> means = get_precond(filename, epoch)
+    >>> print(means)
+
     '''
 
-# Finally, we extract values between epoch minus 24 hours through epoch.
-# Here, we do this is a very clunky way and will improve upon it in
-# future iterations.  Let's loop through the times and find the indexes
-# where time is within epoch and epoch minus 1 day.
-iStart, iStop = -1, -1  # Initial values of our indices.
-for i, tnow in enumerate(time):  # Python loops are cool.
-    # If the current time surpasses epoch-1 for the first time, get index.
-    if tnow >= epoch-1.0 and iStart==-1: iStart=i
-    # If we pass epoch, save index and break.
-    if tnow > epoch:
-        iStop = i
-        break
+    # Open file, load data:
+    data = load_omni(filename)
 
-# DEBUG INFORMATION:  Let's print to screen what we found in
-# our time analysis above.  See notes on "format" syntax below.
-# Note that we unzip our time back into DOY and Hour.  
-print('Epoch is DOY {} Hour {:.1f}'.format(
-    int(epoch), 24*(epoch-int(epoch))))
-print('Start time: i={}, DOY {} Hour {:.1f}'.format(
-    iStart, int(time[iStart]), 24*(time[iStart]-int(time[iStart]))))
-print('End time: i={}, DOY {} Hour {:.1f}'.format(
-    iStop, int(time[iStop]), 24*(time[iStop]-int(time[iStop]))))
+    # Calculate clock angle:
+    calc_clock(data)
+
+    # Now, let's get to work.  We want to create a mask
+    # that hides times not within our window.  Numpy can
+    # do this very easily!  "mask" will be an array of
+    # booleans that has the same time and shape as data['time'].
+    # However, it will only be `True` when the conditions pass:
+    mask = (data['time']>=epoch-dt.timedelta(days=1))&(data['time']<=epoch)
+
+    # Create a container of output:
+    means = {}
     
-# Report values to screen and quit.
-# `.mean` does the averaging.  The indexing handles controlling the range.
-# String formatting is an important skill, see here for more details:
-# https://docs.python.org/3/library/string.html#format-string-syntax
-print('Average values leading up to storm:')
-print('\t|B|:\t{:.2f}'.format(data[iStart:iStop,3].mean()))
-print('\tIMF Bz:\t{:.2f}'.format(data[iStart:iStop,6].mean()))
-print('\tPdyn  :\t{:.2f}'.format(data[iStart:iStop,9].mean()))
-print('\tClock :\t{:.2f}'.format(clock[iStart:iStop].mean()))
+    # Now, we can get means for all values using this mask:
+    for varname in data.keys():
+        # Don't average time, of course.
+        if varname=='time': continue
+        # Note how we use the boolean array to index our data:
+        means[varname] = data[varname][mask].mean()
 
-# ...and we're done.
+    # Some debug work.  Note the use of "f-strings": formatted
+    # strings that begin with f before the quotes.
+    # Google on how to format times in strings as below.
+    if debug:
+        print(f'DEBUG INFO:')
+        print(f'\tFilename = {filename}')
+        print(f'\tEpoch = {epoch:%Y-%m-%d %H UT}')
+        print(f'\tStart time = {data["time"][mask][ 0]:%Y-%m-%d %H UT}')
+        print(f'\tEnd time   = {data["time"][mask][-1]:%Y-%m-%d %H UT}')
+              
+        
+    # And that's it!
+    return means
 
 if __name__ == '__main__':
     # If we run this file as a script, execute this portion.
@@ -184,6 +205,6 @@ if __name__ == '__main__':
     t = dt.datetime(2000,7,15,13,0,0)
 
     # Our file to read/open:
-    filename = 'omni_july2000.lst'
+    filename = 'data/omni_july2000.lst'
 
     data1 = load_omni(filename)
